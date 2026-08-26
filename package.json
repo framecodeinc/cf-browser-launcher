@@ -1,0 +1,88 @@
+{
+  "name": "cf-browser-launcher",
+  "displayName": "CF Browser Launcher",
+  "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice",
+  "version": "0.0.1",
+  "publisher": "YOUR-PUBLISHER-ID",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR-USERNAME/cf-browser-launcher"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/vscode": "^1.134.0",
+    "@vscode/vsce": "^2.24.0",
+    "typescript": "^5.9.3"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "cfBrowserLauncher.openInDefault",
+        "title": "Open in Chromium (ColdFusion)"
+      },
+      {
+        "command": "cfBrowserLauncher.chooseBrowser",
+        "title": "Open in... (ColdFusion)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "when": "resourceExtname == .cfm",
+          "command": "cfBrowserLauncher.openInDefault",
+          "group": "navigation@1"
+        },
+        {
+          "when": "resourceExtname == .cfm",
+          "command": "cfBrowserLauncher.chooseBrowser",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CF Browser Launcher",
+      "properties": {
+        "cfBrowserLauncher.serverBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Base URL of the ColdFusion server, INCLUDING the project/context root, exactly as the CF server expects it. Example: http://localhost:8500/my-project"
+        },
+        "cfBrowserLauncher.documentRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path on disk that corresponds to serverBaseUrl (usually the root of the workspace open in VS Code, which is typically the same folder mapped as the CF project's document root). Leave empty to use the workspace root automatically."
+        },
+        "cfBrowserLauncher.defaultBrowser": {
+          "type": "string",
+          "default": "chromium",
+          "description": "Key (within 'browsers') used by the quick command 'Open in Chromium (ColdFusion)'."
+        },
+        "cfBrowserLauncher.browsers": {
+          "type": "object",
+          "default": {
+            "chromium": "C:\\Chromium\\chrome.exe",
+            "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            "edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+            "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
+          },
+          "description": "Map of name -> absolute path of each installed browser's executable. Adjust the paths to match your machine."
+        }
+      }
+    }
+  }
+}
