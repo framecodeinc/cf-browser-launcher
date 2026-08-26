@@ -1,12 +1,12 @@
 {
   "name": "cf-browser-launcher",
-  "displayName": "CF Browser Launcher",
-  "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice",
+  "displayName": "ColdFusion Browser Launcher",
+  "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice.",
   "version": "0.0.1",
   "publisher": "YOUR-PUBLISHER-ID",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR-USERNAME/cf-browser-launcher"
+    "url": "https://github.com/framecodeinc/cf-browser-launcher"
   },
   "license": "MIT",
   "engines": {
@@ -55,17 +55,22 @@
       ]
     },
     "configuration": {
-      "title": "CF Browser Launcher",
+      "title": "ColdFusion Browser Launcher",
       "properties": {
-        "cfBrowserLauncher.serverBaseUrl": {
+        "cfBrowserLauncher.serverHost": {
           "type": "string",
-          "default": "",
-          "description": "Base URL of the ColdFusion server, INCLUDING the project/context root, exactly as the CF server expects it. Example: http://localhost:8500/my-project"
+          "default": "http://localhost:8500",
+          "description": "Adobe ColdFusion server host and port by default: http://localhost:8500"
         },
         "cfBrowserLauncher.documentRoot": {
           "type": "string",
           "default": "",
-          "description": "Absolute path on disk that corresponds to serverBaseUrl (usually the root of the workspace open in VS Code, which is typically the same folder mapped as the CF project's document root). Leave empty to use the workspace root automatically."
+          "description": "Absolute path on disk that corresponds to a single CF project's root, for example: C:\\ColdFusion2025\\cfusion\\wwwroot\\my-project. Leave empty to auto-detect it as the root of the workspace folder that contains the file you right-clicked (recommended, works with multi-root workspaces where each root is a different CF project)."
+        },
+        "cfBrowserLauncher.projectName": {
+          "type": "string",
+          "default": "",
+          "description": "Project name used as the URL segment right after serverHost, e.g. the 'my-project' in http://localhost:8500/my-project/file.cfm. Leave empty to auto-detect it from the name of the resolved document root folder (recommended)."
         },
         "cfBrowserLauncher.defaultBrowser": {
           "type": "string",
@@ -75,7 +80,7 @@
         "cfBrowserLauncher.browsers": {
           "type": "object",
           "default": {
-            "chromium": "C:\\Chromium\\chrome.exe",
+            "chromium": "C:\\Program Files\\Chromium\\Application\\chrome.exe",
             "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
             "edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
             "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe"

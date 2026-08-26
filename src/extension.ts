@@ -8,12 +8,17 @@ interface BrowserMap {
 
 function buildUrl(fileUri: vscode.Uri): string {
   const config = vscode.workspace.getConfiguration('cfBrowserLauncher');
-  const baseUrl = config.get<string>('serverBaseUrl', '');
+  const serverHost = config.get<string>('serverHost', '');
   let documentRoot = config.get<string>('documentRoot', '');
+  let projectName = config.get<string>('projectName', '');
 
   if (!documentRoot) {
     const folder = vscode.workspace.getWorkspaceFolder(fileUri);
     documentRoot = folder ? folder.uri.fsPath : path.dirname(fileUri.fsPath);
+  }
+
+  if (!projectName) {
+    projectName = path.basename(documentRoot);
   }
 
   const relative = path
@@ -21,7 +26,7 @@ function buildUrl(fileUri: vscode.Uri): string {
     .split(path.sep)
     .join('/');
 
-  return `${baseUrl.replace(/\/$/, '')}/${relative}`;
+  return `${serverHost.replace(/\/$/, '')}/${projectName}/${relative}`;
 }
 
 function launchBrowser(browserPath: string, url: string): void {
