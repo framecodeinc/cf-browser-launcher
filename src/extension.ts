@@ -1,9 +1,14 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as os from 'os';
 import { execFile } from 'child_process';
 
 interface BrowserMap {
   [name: string]: string;
+}
+
+function capitalize(name: string): string {
+  return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
 function buildUrl(fileUri: vscode.Uri): string {
@@ -29,14 +34,51 @@ function buildUrl(fileUri: vscode.Uri): string {
   return `${serverHost.replace(/\/$/, '')}/${projectName}/${relative}`;
 }
 
-function launchBrowser(browserPath: string, url: string): void {
+function launchBrowser(browserKey: string, browserPath: string, url: string, fileName: string): void {
   execFile(browserPath, [url], (err) => {
     if (err) {
       vscode.window.showErrorMessage(
         `Could not open the browser (${browserPath}): ${err.message}`
       );
+      return;
     }
+
+    vscode.window.showInformationMessage(`Running '${fileName}' in ${capitalize(browserKey)}...`);
   });
+}
+
+function launchInSystemDefaultBrowser(url: string, fileName: string): void {
+  const platform = os.platform();
+  let command: string;
+  let args: string[];
+
+  if (platform === 'win32') {
+    // The empty "" is required: it's consumed by `start` as the window title,
+    // so the URL isn't mistaken for one.
+    command = 'cmd';
+    args = ['/c', 'start', '""', url];
+  } else if (platform === 'darwin') {
+    command = 'open';
+    args = [url];
+  } else {
+    command = 'xdg-open';
+    args = [url];
+  }
+
+  execFile(command, args, (err) => {
+    if (err) {
+      vscode.window.showErrorMessage(
+        `Could not open the system default browser for '${fileName}': ${err.message}`
+      );
+      return;
+    }
+
+    vscode.window.showInformationMessage(`Running '${fileName}' in the system default browser...`);
+  });
+}
+
+interface BrowserQuickPickItem extends vscode.QuickPickItem {
+  key: string;
 }
 
 function resolveTargetUri(uri?: vscode.Uri): vscode.Uri | undefined {
@@ -57,6 +99,13 @@ export function activate(context: vscode.ExtensionContext): void {
         const config = vscode.workspace.getConfiguration('cfBrowserLauncher');
         const browsers = config.get<BrowserMap>('browsers', {});
         const key = config.get<string>('defaultBrowser', '');
+        const fileName = path.basename(target.fsPath);
+
+        if (!key) {
+          launchInSystemDefaultBrowser(buildUrl(target), fileName);
+          return;
+        }
+
         const browserPath = browsers[key];
 
         if (!browserPath) {
@@ -66,7 +115,7 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
-        launchBrowser(browserPath, buildUrl(target));
+        launchBrowser(key, browserPath, buildUrl(target), fileName);
       }
     ),
 
@@ -79,17 +128,23 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
+        const fileName = path.basename(target.fsPath);
         const config = vscode.workspace.getConfiguration('cfBrowserLauncher');
         const browsers = config.get<BrowserMap>('browsers', {});
-        const pick = await vscode.window.showQuickPick(Object.keys(browsers), {
-          placeHolder: 'Choose the browser to open this file'
+        const items: BrowserQuickPickItem[] = Object.keys(browsers).map((key) => ({
+          label: capitalize(key),
+          key
+        }));
+
+        const pick = await vscode.window.showQuickPick(items, {
+          placeHolder: `Choose browser to run '${fileName}'`
         });
 
         if (!pick) {
           return;
         }
 
-        launchBrowser(browsers[pick], buildUrl(target));
+        launchBrowser(pick.key, browsers[pick.key], buildUrl(target), fileName);
       }
     )
   );

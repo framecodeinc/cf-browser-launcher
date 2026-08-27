@@ -3,7 +3,7 @@
   "displayName": "ColdFusion Browser Launcher",
   "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice.",
   "version": "0.0.1",
-  "publisher": "YOUR-PUBLISHER-ID",
+  "publisher": "framecode",
   "repository": {
     "type": "git",
     "url": "https://github.com/framecodeinc/cf-browser-launcher"
@@ -33,11 +33,11 @@
     "commands": [
       {
         "command": "cfBrowserLauncher.openInDefault",
-        "title": "Open in Chromium (ColdFusion)"
+        "title": "Run CFM File in Default Browser"
       },
       {
         "command": "cfBrowserLauncher.chooseBrowser",
-        "title": "Open in... (ColdFusion)"
+        "title": "Run CFM File in..."
       }
     ],
     "menus": {
@@ -45,12 +45,12 @@
         {
           "when": "resourceExtname == .cfm",
           "command": "cfBrowserLauncher.openInDefault",
-          "group": "navigation@1"
+          "group": "0_cfBrowserLauncher@1"
         },
         {
           "when": "resourceExtname == .cfm",
           "command": "cfBrowserLauncher.chooseBrowser",
-          "group": "navigation@2"
+          "group": "0_cfBrowserLauncher@2"
         }
       ]
     },
@@ -74,16 +74,20 @@
         },
         "cfBrowserLauncher.defaultBrowser": {
           "type": "string",
-          "default": "chromium",
-          "description": "Key (within 'browsers') used by the quick command 'Open in Chromium (ColdFusion)'."
+          "default": "",
+          "description": "Key (within 'browsers') used by 'Run CFM File in Default Browser'. Leave empty to use the operating system's default browser. Set it to one of your 'browsers' keys (e.g. 'brave') to always use that specific browser instead."
         },
         "cfBrowserLauncher.browsers": {
           "type": "object",
           "default": {
-            "chromium": "C:\\Program Files\\Chromium\\Application\\chrome.exe",
             "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
             "edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-            "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
+            "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+            "chromium": "C:\\Program Files\\Chromium\\Application\\chrome.exe"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "description": "Absolute path to this browser's executable."
           },
           "description": "Map of name -> absolute path of each installed browser's executable. Adjust the paths to match your machine."
         }
