@@ -4,7 +4,7 @@
   "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice.",
   "version": "1.0.1",
   "publisher": "framecode",
-  "icon": "images/icon.png",
+  "icon": "icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/framecodeinc/cf-browser-launcher"
@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
-    "@types/vscode": "^1.134.0",
+    "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.24.0",
     "typescript": "^5.9.3"
   },

@@ -1,5 +1,14 @@
 # ColdFusion Browser Launcher
 
+[![VS Code Marketplace Version](https://img.shields.io/visual-studio-marketplace/v/framecode.cf-browser-launcher?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=framecode.cf-browser-launcher)
+[![Installs](https://img.shields.io/visual-studio-marketplace/i/framecode.cf-browser-launcher)](https://marketplace.visualstudio.com/items?itemName=framecode.cf-browser-launcher)
+[![Downloads](https://img.shields.io/visual-studio-marketplace/d/framecode.cf-browser-launcher?color=brightgreen&label=Downloads)](https://marketplace.visualstudio.com/items?itemName=framecode.cf-browser-launcher)
+[![Rating](https://img.shields.io/visual-studio-marketplace/stars/framecode.cf-browser-launcher)](https://marketplace.visualstudio.com/items?itemName=framecode.cf-browser-launcher&ssr=false#review-details)
+[![License](https://img.shields.io/github/license/framecodeinc/cf-browser-launcher?label=License)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/framecodeinc/cf-browser-launcher?style=social)](https://github.com/framecodeinc/cf-browser-launcher)
+[![Open Issues](https://img.shields.io/github/issues/framecodeinc/cf-browser-launcher)](https://github.com/framecodeinc/cf-browser-launcher/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/framecodeinc/cf-browser-launcher)](https://github.com/framecodeinc/cf-browser-launcher/commits)
+
 Open `.cfm` files against your local Adobe ColdFusion server, in a browser of your
 choice — without touching your operating system's default browser.
 
