@@ -2,8 +2,9 @@
   "name": "cf-browser-launcher",
   "displayName": "ColdFusion Browser Launcher",
   "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice.",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "publisher": "framecode",
+  "icon": "images/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/framecodeinc/cf-browser-launcher"

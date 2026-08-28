@@ -1,99 +1,118 @@
-# CF Browser Launcher
+# ColdFusion Browser Launcher
 
-A minimal VS Code extension that adds two commands when you right-click a `.cfm`
-file in the Explorer:
+Open `.cfm` files against your local Adobe ColdFusion server, in a browser of your
+choice — without touching your operating system's default browser.
 
-- **Open in Chromium (ColdFusion)** — opens directly in the browser configured as
-  `defaultBrowser`.
-- **Open in... (ColdFusion)** — shows a picker to choose among the configured
-  browsers (similar to WebStorm's browser selector).
+This solves a specific gap in the Adobe ColdFusion Builder extension for VS Code:
+its "Run As ColdFusion Application" command always opens your OS default browser,
+with no way to pick a different one. That's inconvenient if your main browser is
+full of saved sessions, cookies, and passwords you don't want to clear constantly
+during development.
+
+## Features
+
+Right-click any `.cfm` file in the Visual Studio Code Explorer panel to get two new options:
+
+- **Run CFM File in Default Browser** — instantly opens the file's URL. Uses your
+  operating system's default browser out of the box; you can point it at a specific
+  browser instead (see Configuration below).
+- **Run CFM File in...** — shows a picker to choose which configured browser to use,
+  just for that one run.
+
+The extension automatically builds the correct URL for the file you clicked,
+detecting which CF project it belongs to from your open workspace folder — no need
+to type the URL by hand every time.
 
 It doesn't modify or depend on the Adobe ColdFusion Builder extension; it's fully
-independent.
+independent and works alongside it.
 
-Written in TypeScript (`src/extension.ts`), compiled to `out/extension.js` via `tsc`.
+## Usage
 
-## Development / local testing
+1. Make sure your ColdFusion server is running locally (e.g. `http://localhost:8500`).
+2. Open your CF project folder in VS Code.
+3. Right-click any `.cfm` file → **Run CFM File in Default Browser** or
+   **Run CFM File in...**.
 
-```bash
-npm install
-npm run compile      # or: npm run watch
-```
+ <img src="images/readme0.png" width="30%" />
 
-To try it without installing anything, open the project folder in VS Code and press
-`F5` (Run > Start Debugging). A second VS Code window opens
-("Extension Development Host") with the extension already loaded — that's where you
-test the right-click on a `.cfm` file.
+## Extension Settings
 
-## Permanent local install (no Marketplace)
+Go to `Settings` (Ctrl+,) and search for `ColdFusion Browser Launcher`, or edit your
+`settings.json` directly:
 
-1. Build it (`npm run compile`) to generate `out/extension.js`.
-2. Copy the whole `cf-browser-launcher` folder (with `out/` included, no need for
-   `src/` or `node_modules/`) into your VS Code extensions folder:
-
-   ```
-   %USERPROFILE%\.vscode\extensions\cf-browser-launcher-0.0.1
-   ```
-
-3. Restart VS Code. Right-click any `.cfm` file in the Explorer → you'll see the two
-   new options.
-
-## Publishing to the Marketplace
-
-1. Replace `YOUR-PUBLISHER-ID` in `package.json` with your real publisher ID (created
-   at https://marketplace.visualstudio.com/manage, requires an Azure DevOps
-   organization and a Personal Access Token).
-2. Also replace the `repository` field with your repo's real URL.
-3. Build the package and publish:
-
-   ```bash
-   npx vsce login YOUR-PUBLISHER-ID
-   npm run package     # generates cf-browser-launcher-0.0.1.vsix (check it before publishing)
-   npx vsce publish
-   ```
-
-Before publishing, it's worth: adding an icon (`icon` in `package.json`, 128x128+
-PNG), refining `categories`/`keywords` so it's easy to find in the Marketplace, and
-double-checking that no personal/project-specific defaults remain in the settings
-(the `serverBaseUrl` default is already empty for this reason — each user fills in
-their own project path).
-
-## Configuration
-
-Go to `Settings` (Ctrl+,) and search for `cfBrowserLauncher`, or edit your
-`settings.json`:
+<img src="images/readme1.png" width="90%" />
 
 ```jsonc
 {
-  "cfBrowserLauncher.serverBaseUrl": "http://localhost:8500/my-project",
-  "cfBrowserLauncher.documentRoot": "", // empty = root of the open workspace
-  "cfBrowserLauncher.defaultBrowser": "chromium",
+  "cfBrowserLauncher.serverHost": "http://localhost:8500",
+  "cfBrowserLauncher.documentRoot": "", // empty = auto-detect from the workspace folder
+  "cfBrowserLauncher.projectName": "", // empty = auto-detect from the folder name
+  "cfBrowserLauncher.defaultBrowser": "", // empty = use the OS default browser
   "cfBrowserLauncher.browsers": {
-    "chromium": "C:\\Program Files\\Chromium\\Application\\chrome.exe",
     "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-    "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe"
+    "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
+    "chromium": "C:\\Chromium\\chrome.exe"
   }
 }
 ```
 
-### About `serverBaseUrl` and `documentRoot`
+| Setting | Default | Description |
+|---|---|---|
+| `serverHost` | `http://localhost:8500` | Your ColdFusion server's host and port, without the project name. |
+| `documentRoot` | *(empty)* | Absolute path to a specific CF project's root. Leave empty to auto-detect it from the workspace folder that contains the file you clicked. |
+| `projectName` | *(empty)* | The URL segment right after `serverHost`. Leave empty to auto-detect it from the resolved document root's folder name. |
+| `defaultBrowser` | *(empty)* | Which entry in `browsers` to use for "Run CFM File in Default Browser". Leave empty to use your OS default browser instead of a specific one. |
+| `browsers` | Chrome, Edge, Firefox, Chromium | Map of browser name → absolute path to its executable. Add, edit, or remove entries from the Settings UI (a table with an "Add Item" button), or edit `settings.json` directly. |
 
-- If the **workspace you have open in VS Code is exactly the folder the CF server
-  maps as your project** (i.e., workspace root = project root in the URL), leave
-  `documentRoot` empty and set `serverBaseUrl` to the full URL up to the project name:
-  `http://localhost:8500/my-project`.
-- If instead you have a **parent folder** open (for example, a workspace containing
-  several CF projects, where your project is a subfolder), set `documentRoot` to the
-  absolute path of that specific subfolder, and `serverBaseUrl` to
-  `http://localhost:8500/my-project` all the same.
-- Adjust the browser paths in `browsers` to wherever they're installed on your machine
-  (double-check the exact executable path for Chromium/Chrome/Edge/Firefox).
+### About auto-detection (`documentRoot` and `projectName`)
 
-## Notes
+By default (both left empty), the extension:
 
-- You can assign a keyboard shortcut to either command from `Keyboard Shortcuts`
-  (search for `cfBrowserLauncher`).
-- If you later want to share it with your team or move it to another machine, it can
-  be packaged as a `.vsix` with `vsce package`, but that's not required for personal
-  use.
+1. Finds the workspace folder that contains the `.cfm` file you right-clicked, and
+   uses it as `documentRoot`.
+2. Uses that folder's own name as `projectName`.
+3. Builds the URL as `serverHost/projectName/relativePathToFile`.
+
+This works out of the box whenever your local folder name matches the project name
+your CF server uses (the common case), and it also works correctly in **multi-root
+workspaces** — each root folder is resolved independently, so you can have several CF
+projects open at once and each `.cfm` resolves to its own project's URL.
+
+Override when needed:
+- Set **`projectName`** if your local folder name doesn't match the URL segment the
+  CF server expects (e.g. folder is `my-project-dev` but the server maps it as
+  `myproject`).
+- Set **`documentRoot`** if the actual CF project root is a *subfolder* of your open
+  workspace, rather than the workspace root itself.
+
+## Requirements
+
+- A locally running Adobe ColdFusion server.
+- The browser(s) you want to use already installed, with their executable paths
+  configured in `browsers`.
+
+## Known Limitations
+
+- Right-click menu labels are static — they can't show the file name or the selected
+  browser's name (a VS Code platform limitation), only the run notification and the
+  "Run CFM File in..." picker do.
+- URL building assumes the CF convention where the URL path mirrors the file's path
+  on disk. It isn't meant for frameworks with client-side or code-based routing
+  (Blazor, Angular, and similar).
+- Assumes the standard single-webroot layout (`serverHost/projectName/...`). If your
+  ColdFusion server uses **Virtual Host** settings (a project mapped to its own
+  domain or port, with no project name in the URL), set `serverHost` to that
+  project's full domain/port and `projectName` to whatever segment (if any) its URLs
+  actually use — there's currently no way to omit the project segment entirely.
+
+## Release Notes
+
+### 1.0.1
+
+Initial release: run `.cfm` files against a local ColdFusion server in a browser of
+your choice, right from the Explorer context menu.
+
+## Author
+
+FrameCode Inc.
