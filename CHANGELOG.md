@@ -4,6 +4,14 @@ All notable changes to the "ColdFusion Browser Launcher" extension will be docum
 
 ---
 
+## [1.0.6] - 2026-08-28
+
+### Changed
+ 
+- Minor improvements and fixes.
+
+---
+
 ## [1.0.5] - 2026-08-28
 
 ### Changed

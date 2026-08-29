@@ -111,13 +111,6 @@ Override when needed:
   project's full domain/port and `projectName` to whatever segment (if any) its URLs
   actually use — there's currently no way to omit the project segment entirely.
 
-## Release Notes
-
-### 1.0.1
-
-Initial release: run `.cfm` files against a local ColdFusion server in a browser of
-your choice, right from the Explorer context menu.
-
 ## Author
 
 FrameCode Inc.
