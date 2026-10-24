@@ -22,7 +22,7 @@ test the right-click on a `.cfm` file.
    `src/` or `node_modules/`) into your VS Code extensions folder:
 
    ```
-   %USERPROFILE%\.vscode\extensions\cf-browser-launcher-1.0.1
+   %USERPROFILE%\.vscode\extensions\cf-browser-launcher-1.1.6
    ```
 
 3. Restart VS Code.
@@ -36,7 +36,7 @@ test the right-click on a `.cfm` file.
 
    ```bash
    npm run compile
-   npm run package     # generates cf-browser-launcher-1.0.1.vsix
+   npm run package     # generates cf-browser-launcher-1.1.6.vsix
    ```
 
    Install that `.vsix` from the Extensions panel (`...` menu → "Install from

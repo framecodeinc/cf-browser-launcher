@@ -2,7 +2,7 @@
   "name": "cf-browser-launcher",
   "displayName": "ColdFusion Browser Launcher",
   "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice.",
-  "version": "1.0.6",
+  "version": "1.1.6",
   "publisher": "framecode",
   "icon": "icon.png",
   "repository": {
@@ -16,7 +16,9 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onDebugResolve:cfbl-cfml-debugger"
+  ],
   "main": "./out/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -39,6 +41,22 @@
       {
         "command": "cfBrowserLauncher.chooseBrowser",
         "title": "Run CFM File in..."
+      },
+      {
+        "command": "cfBrowserLauncher.debugInDefault",
+        "title": "Debug CFM File in Default Browser"
+      },
+      {
+        "command": "cfBrowserLauncher.debugChooseBrowser",
+        "title": "Debug CFM File in..."
+      },
+      {
+        "command": "cfBrowserLauncher.forgetProjects",
+        "title": "CF Browser Launcher: Forget Remembered Projects"
+      },
+      {
+        "command": "cfBrowserLauncher.showLog",
+        "title": "CF Browser Launcher: Show Log"
       }
     ],
     "menus": {
@@ -52,6 +70,16 @@
           "when": "resourceExtname == .cfm",
           "command": "cfBrowserLauncher.chooseBrowser",
           "group": "0_cfBrowserLauncher@2"
+        },
+        {
+          "when": "resourceExtname == .cfm",
+          "command": "cfBrowserLauncher.debugInDefault",
+          "group": "0_cfBrowserLauncher@3"
+        },
+        {
+          "when": "resourceExtname == .cfm",
+          "command": "cfBrowserLauncher.debugChooseBrowser",
+          "group": "0_cfBrowserLauncher@4"
         }
       ]
     },
@@ -93,6 +121,48 @@
           "description": "Map of name -> absolute path of each installed browser's executable. Adjust the paths to match your machine."
         }
       }
-    }
+    },
+    "debuggers": [
+      {
+        "type": "cfbl-cfml-debugger",
+        "label": "CFML Debug (CF Browser Launcher)",
+        "languages": [
+          "cfml"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path of the .cfm file to debug."
+              },
+              "globalConfigFilePath": {
+                "type": "string",
+                "description": "Path of Adobe's adobe-cfml.json."
+              },
+              "project": {
+                "description": "Adobe ColdFusion Builder project (object or JSON string)."
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": false
+              },
+              "trace": {
+                "type": "boolean",
+                "default": false
+              },
+              "cfblBrowserPath": {
+                "type": "string",
+                "description": "Absolute path of the browser executable to open the debug URL with."
+              },
+              "cfblStatusFile": {
+                "type": "string",
+                "description": "Internal: file used to report the browser launch result."
+              }
+            }
+          }
+        }
+      }
+    ]
   }
 }

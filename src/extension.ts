@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as os from 'os';
 import { execFile } from 'child_process';
+import { registerDebugLauncher } from './debugLauncher';
 
 interface BrowserMap {
   [name: string]: string;
@@ -85,7 +86,10 @@ function resolveTargetUri(uri?: vscode.Uri): vscode.Uri | undefined {
   return uri ?? vscode.window.activeTextEditor?.document.uri;
 }
 
+
 export function activate(context: vscode.ExtensionContext): void {
+  registerDebugLauncher(context);
+
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'cfBrowserLauncher.openInDefault',
