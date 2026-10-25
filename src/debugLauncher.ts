@@ -1,36 +1,75 @@
+/**
+ * "Debug ColdFusion File in..." support: starts Adobe's debugger for a file and opens the page in the
+ * browser the user chose.
+ *
+ * Adobe's debugger always opens the operating system's default browser. For another browser, a
+ * debug session of this extension's own type ({@link BROWSER_DEBUG_TYPE}) runs Adobe's adapter
+ * through `adapterWrapper.ts`, which redirects that one step. This module also finds the ColdFusion
+ * project of the file (so Adobe's "select project" prompt isn't needed), remembers projects, keeps a
+ * short log and reports problems to the user.
+ *
+ * @packageDocumentation
+ */
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import { getBrowsers } from './browsers';
 import { AdobeProject, findProject, isUsableProject } from './projectResolver';
 
+/** Identifier of Adobe's ColdFusion Builder extension (`publisher.name`). */
 const ADOBE_EXTENSION_ID = 'com-adobe-coldfusion.adobe-cfml-lsp';
+
+/** Debug type of Adobe's own debugger. Used when the system default browser is wanted. */
 const ADOBE_DEBUG_TYPE = 'cfml-debugger';
+
+/** Debug type contributed by this extension; it runs Adobe's adapter through the wrapper. */
 export const BROWSER_DEBUG_TYPE = 'cfbl-cfml-debugger';
 
+/**
+ * The version of the Adobe ColdFusion Builder extension this feature was built and tested against.
+ * Other versions may work, but Adobe could change how its debugger opens the browser.
+ */
+const TESTED_ADOBE_VERSION = '1.0.880';
+
+/** How often (ms) the wrapper's status file is checked. */
 const STATUS_POLL_MS = 400;
+
+/** How long (ms) to wait for the wrapper to report before telling the user the redirect failed. */
 const NOT_INTERCEPTED_TIMEOUT_MS = 30000;
 
-interface BrowserMap {
-  [name: string]: string;
-}
-
+/** A browser picked by the user. */
 interface BrowserChoice {
+  /** Name of the entry in `cfBrowserLauncher.browsers`, e.g. `chrome`. */
   key: string;
+  /** Absolute path of the browser executable. */
   path: string;
 }
 
+/** One line of the status file written by the adapter wrapper. */
 interface StatusEntry {
+  /** `ok` when the chosen browser was started, `error` otherwise. */
   status: 'ok' | 'error';
+  /** Human-readable detail. */
   message: string;
 }
 
-// Set when the extension activates: the folder that holds every extension's global storage.
+/** Folder that holds the global storage of every extension (the parent of this extension's own). */
 let globalStorageRoot = '';
+
+/** Storage that survives restarts; used to remember projects. Set on activation. */
 let state: vscode.Memento | undefined;
+
+/** Output panel with the short log. Created the first time something is logged. */
 let channel: vscode.OutputChannel | undefined;
 
-// Short, human-readable log of what the debug launcher does (one line per event; no protocol traffic).
+/**
+ * Adds a line, with the time, to the "ColdFusion Browser Launcher" output panel.
+ *
+ * One line per event; no protocol traffic.
+ *
+ * @param line - The text to record.
+ */
 function log(line: string): void {
   if (!channel) {
     channel = vscode.window.createOutputChannel('ColdFusion Browser Launcher');
@@ -39,6 +78,7 @@ function log(line: string): void {
   channel.appendLine(`[${time}] ${line}`);
 }
 
+/** Shows the output panel with the log, without taking focus from the editor. */
 function showLog(): void {
   if (!channel) {
     log('Nothing recorded yet.');
@@ -46,7 +86,13 @@ function showLog(): void {
   channel?.show(true);
 }
 
-// Errors are also logged and offer a shortcut to the log.
+/**
+ * Shows an error message and also records it in the log.
+ *
+ * The message has a **Show Log** button that opens the log.
+ *
+ * @param message - What went wrong, in terms the user can act on.
+ */
 function showError(message: string): void {
   log(`ERROR: ${message}`);
   void vscode.window.showErrorMessage(message, 'Show Log').then((choice) => {
@@ -56,14 +102,25 @@ function showError(message: string): void {
   });
 }
 
+/** Key under which the remembered projects are stored. */
 const REMEMBERED_KEY = 'cfbl.rememberedProjects';
+
+/** Maximum number of remembered projects; the oldest are dropped first. */
 const MAX_REMEMBERED = 50;
 
+/** @returns The projects remembered from earlier debug sessions (empty when there are none). */
 function getRemembered(): AdobeProject[] {
   return state?.get<AdobeProject[]>(REMEMBERED_KEY, []) ?? [];
 }
 
-// Adobe's session configuration carries the project either as an object or as a JSON string.
+/**
+ * Reads a project out of a debug session configuration.
+ *
+ * Adobe's configuration carries the project either as an object or as a JSON string.
+ *
+ * @param value - The `project` attribute of the configuration.
+ * @returns The project, or `undefined` if it is missing or not usable.
+ */
 function parseProject(value: unknown): AdobeProject | undefined {
   let candidate: unknown = value;
   if (typeof value === 'string') {
@@ -76,7 +133,13 @@ function parseProject(value: unknown): AdobeProject | undefined {
   return isUsableProject(candidate) ? candidate : undefined;
 }
 
-// Remembers the project of a debug session so the next one can skip Adobe's "select project" prompt.
+/**
+ * Remembers the project of a debug session so the next one can skip Adobe's "select project" prompt.
+ *
+ * Does nothing if the same project data is already stored.
+ *
+ * @param project - The project to store (replaces an older copy with the same id).
+ */
 function remember(project: AdobeProject): void {
   const all = getRemembered();
   const index = all.findIndex((p) => p.id === project.id);
@@ -92,7 +155,12 @@ function remember(project: AdobeProject): void {
   log(`Remembered project '${project.label}' for next time.`);
 }
 
-// Adobe keeps its projects and servers in <globalStorage>/<extension id>/adobe-cfml.json.
+/**
+ * Adobe keeps its servers (and, depending on its version, projects) in
+ * `<globalStorage>/<extension id>/adobe-cfml.json`.
+ *
+ * @returns The path of that file, or `undefined` if it doesn't exist.
+ */
 function getAdobeGlobalConfigPath(): string | undefined {
   if (!globalStorageRoot) {
     return undefined;
@@ -101,15 +169,29 @@ function getAdobeGlobalConfigPath(): string | undefined {
   return fs.existsSync(file) ? file : undefined;
 }
 
+/** @returns The name with its first letter in upper case (`chrome` becomes `Chrome`). */
 function capitalize(name: string): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
+/**
+ * Works out which file a command applies to.
+ *
+ * @param uri - The file the command was invoked on (Explorer or editor menu), if any.
+ * @returns That file, or the active editor's file; `undefined` if neither is a file on disk.
+ */
 function resolveTarget(uri?: vscode.Uri): vscode.Uri | undefined {
   const target = uri ?? vscode.window.activeTextEditor?.document.uri;
   return target && target.scheme === 'file' ? target : undefined;
 }
 
+/** @returns The installed version of Adobe's ColdFusion Builder extension, or `unknown`. */
+function getAdobeVersion(): string {
+  const version: unknown = vscode.extensions.getExtension(ADOBE_EXTENSION_ID)?.packageJSON?.version;
+  return typeof version === 'string' ? version : 'unknown';
+}
+
+/** @returns The path of Adobe's `adapter.js` inside its extension, or `undefined` if it isn't there. */
 function getAdobeAdapterPath(): string | undefined {
   const adobe = vscode.extensions.getExtension(ADOBE_EXTENSION_ID);
   if (!adobe) {
@@ -119,9 +201,20 @@ function getAdobeAdapterPath(): string | undefined {
   return fs.existsSync(adapterPath) ? adapterPath : undefined;
 }
 
+/**
+ * Tells VS Code how to start the debug adapter of {@link BROWSER_DEBUG_TYPE}: Adobe's own adapter,
+ * launched through the wrapper that redirects the browser.
+ */
 class BrowserDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+  /** @param wrapperPath - Absolute path of this extension's `adapterWrapper.js`. */
   constructor(private readonly wrapperPath: string) {}
 
+  /**
+   * @param session - The session being started; its configuration has `cfblBrowserPath` (browser to
+   *   use) and `cfblStatusFile` (where the wrapper reports the outcome).
+   * @returns The command that starts the wrapper (VS Code's own binary, running as plain Node).
+   * @throws If Adobe's adapter or the chosen browser can't be found.
+   */
   createDebugAdapterDescriptor(session: vscode.DebugSession): vscode.DebugAdapterDescriptor {
     const adapterPath = getAdobeAdapterPath();
     if (!adapterPath) {
@@ -146,6 +239,12 @@ class BrowserDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory
   }
 }
 
+/**
+ * Reads what the adapter wrapper reported.
+ *
+ * @param statusFile - Path of the status file.
+ * @returns The first error if there is one, otherwise the last `ok`; `undefined` if nothing was reported yet.
+ */
 function readStatus(statusFile: string): StatusEntry | undefined {
   let content: string;
   try {
@@ -174,8 +273,16 @@ function readStatus(statusFile: string): StatusEntry | undefined {
   return ok;
 }
 
-// Waits for the adapter wrapper to report what happened with the browser and tells the user.
-// If nothing is reported in time, the launch was not intercepted: say so instead of failing silently.
+/**
+ * Waits for the adapter wrapper to report what happened with the browser and tells the user.
+ *
+ * If nothing is reported in time, the launch was not intercepted: it says so instead of failing
+ * silently. If the session ends first, nothing is added, because Adobe already reported why.
+ *
+ * @param statusFile - Status file the wrapper writes to (removed when done).
+ * @param fileName - Name of the file being debugged, for the messages.
+ * @param browser - The browser the user picked.
+ */
 function watchBrowserLaunch(statusFile: string, fileName: string, browser: BrowserChoice): void {
   const startedAt = Date.now();
   let sessionEnded = false;
@@ -231,19 +338,29 @@ function watchBrowserLaunch(statusFile: string, fileName: string, browser: Brows
       finish();
       showError(
         `Debug: the browser launch could not be redirected to ${capitalize(browser.key)}. ` +
-          "Adobe's debugger may have changed; the system default browser may have opened instead."
+          "Adobe's debugger may have changed; the system default browser may have opened instead. " +
+          `(Adobe ColdFusion Builder extension ${getAdobeVersion()}; tested with ${TESTED_ADOBE_VERSION}.)`
       );
     }
   }, STATUS_POLL_MS);
 }
 
+/**
+ * Starts a debug session for a file.
+ *
+ * Finds the file's project so Adobe doesn't ask for it (falling back to Adobe's own prompt), then
+ * starts Adobe's debugger directly (system default browser) or this extension's type (chosen browser).
+ *
+ * @param target - The `.cfm` or `.cfc` file to debug.
+ * @param browser - The browser to open the page in; omit to use the operating system's default.
+ */
 async function startDebug(target: vscode.Uri, browser?: BrowserChoice): Promise<void> {
   const fileName = path.basename(target.fsPath);
 
   const adobe = vscode.extensions.getExtension(ADOBE_EXTENSION_ID);
   if (!adobe) {
     showError(
-      'The Adobe ColdFusion Builder extension is required to debug .cfm files and is not installed.'
+      'The Adobe ColdFusion Builder extension is required to debug ColdFusion files and is not installed.'
     );
     return;
   }
@@ -315,6 +432,11 @@ async function startDebug(target: vscode.Uri, browser?: BrowserChoice): Promise<
   }
 
   const folder = vscode.workspace.getWorkspaceFolder(target);
+  if (browser) {
+    log(
+      `Adobe ColdFusion Builder extension ${getAdobeVersion()} (tested with ${TESTED_ADOBE_VERSION}).`
+    );
+  }
   log(
     `Debug '${fileName}' in ${browser ? capitalize(browser.key) : 'the system default browser'}.`
   );
@@ -327,6 +449,14 @@ async function startDebug(target: vscode.Uri, browser?: BrowserChoice): Promise<
   }
 }
 
+/**
+ * Registers the debug type, its adapter factory and the debug-related commands.
+ *
+ * Commands: `debugInDefault`, `debugChooseBrowser`, `showLog` and `forgetProjects`. Also remembers the
+ * project of every debug session that starts.
+ *
+ * @param context - The extension context, used for storage and subscriptions.
+ */
 export function registerDebugLauncher(context: vscode.ExtensionContext): void {
   globalStorageRoot = path.dirname(context.globalStorageUri.fsPath);
   state = context.globalState;
@@ -371,16 +501,16 @@ export function registerDebugLauncher(context: vscode.ExtensionContext): void {
       async (uri?: vscode.Uri) => {
         const target = resolveTarget(uri);
         if (!target) {
-          void vscode.window.showWarningMessage('No .cfm file selected.');
+          void vscode.window.showWarningMessage('No .cfm or .cfc file selected.');
           return;
         }
 
         const config = vscode.workspace.getConfiguration('cfBrowserLauncher');
-        const browsers = config.get<BrowserMap>('browsers', {});
+        const browsers = getBrowsers();
         const key = config.get<string>('defaultBrowser', '');
 
         if (!key) {
-          // Same rule as 'Run CFM File in Default Browser': no key means the system default browser,
+          // Same rule as 'Run ColdFusion File in Default Browser': no key means the system default browser,
           // which is what Adobe's debugger does on its own.
           await startDebug(target);
           return;
@@ -401,13 +531,11 @@ export function registerDebugLauncher(context: vscode.ExtensionContext): void {
       async (uri?: vscode.Uri) => {
         const target = resolveTarget(uri);
         if (!target) {
-          void vscode.window.showWarningMessage('No .cfm file selected.');
+          void vscode.window.showWarningMessage('No .cfm or .cfc file selected.');
           return;
         }
 
-        const browsers = vscode.workspace
-          .getConfiguration('cfBrowserLauncher')
-          .get<BrowserMap>('browsers', {});
+        const browsers = getBrowsers();
         const items = Object.keys(browsers).map((key) => ({ label: capitalize(key), key }));
 
         const pick = await vscode.window.showQuickPick(items, {

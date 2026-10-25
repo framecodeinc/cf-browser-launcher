@@ -1,8 +1,8 @@
 {
   "name": "cf-browser-launcher",
   "displayName": "ColdFusion Browser Launcher",
-  "description": "Open .cfm files against your local Adobe ColdFusion server in a browser of your choice.",
-  "version": "1.1.6",
+  "description": "Run and debug ColdFusion files (.cfm, .cfc) against your local Adobe ColdFusion server in a browser of your choice.",
+  "version": "1.1.7",
   "publisher": "framecode",
   "icon": "icon.png",
   "repository": {
@@ -36,48 +36,94 @@
     "commands": [
       {
         "command": "cfBrowserLauncher.openInDefault",
-        "title": "Run CFM File in Default Browser"
+        "title": "Run ColdFusion File in Default Browser",
+        "category": "CF Browser Launcher"
       },
       {
         "command": "cfBrowserLauncher.chooseBrowser",
-        "title": "Run CFM File in..."
+        "title": "Run ColdFusion File in...",
+        "category": "CF Browser Launcher"
       },
       {
         "command": "cfBrowserLauncher.debugInDefault",
-        "title": "Debug CFM File in Default Browser"
+        "title": "Debug ColdFusion File in Default Browser",
+        "category": "CF Browser Launcher"
       },
       {
         "command": "cfBrowserLauncher.debugChooseBrowser",
-        "title": "Debug CFM File in..."
+        "title": "Debug ColdFusion File in...",
+        "category": "CF Browser Launcher"
       },
       {
         "command": "cfBrowserLauncher.forgetProjects",
-        "title": "CF Browser Launcher: Forget Remembered Projects"
+        "title": "Forget Remembered Projects",
+        "category": "CF Browser Launcher"
       },
       {
         "command": "cfBrowserLauncher.showLog",
-        "title": "CF Browser Launcher: Show Log"
+        "title": "Show Log",
+        "category": "CF Browser Launcher"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "when": "resourceExtname == .cfm",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
           "command": "cfBrowserLauncher.openInDefault",
           "group": "0_cfBrowserLauncher@1"
         },
         {
-          "when": "resourceExtname == .cfm",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
           "command": "cfBrowserLauncher.chooseBrowser",
           "group": "0_cfBrowserLauncher@2"
         },
         {
-          "when": "resourceExtname == .cfm",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
           "command": "cfBrowserLauncher.debugInDefault",
           "group": "0_cfBrowserLauncher@3"
         },
         {
-          "when": "resourceExtname == .cfm",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
+          "command": "cfBrowserLauncher.debugChooseBrowser",
+          "group": "0_cfBrowserLauncher@4"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "cfBrowserLauncher.openInDefault",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc"
+        },
+        {
+          "command": "cfBrowserLauncher.chooseBrowser",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc"
+        },
+        {
+          "command": "cfBrowserLauncher.debugInDefault",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc"
+        },
+        {
+          "command": "cfBrowserLauncher.debugChooseBrowser",
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc"
+        }
+      ],
+      "editor/context": [
+        {
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
+          "command": "cfBrowserLauncher.openInDefault",
+          "group": "0_cfBrowserLauncher@1"
+        },
+        {
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
+          "command": "cfBrowserLauncher.chooseBrowser",
+          "group": "0_cfBrowserLauncher@2"
+        },
+        {
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
+          "command": "cfBrowserLauncher.debugInDefault",
+          "group": "0_cfBrowserLauncher@3"
+        },
+        {
+          "when": "resourceExtname == .cfm || resourceExtname == .cfc",
           "command": "cfBrowserLauncher.debugChooseBrowser",
           "group": "0_cfBrowserLauncher@4"
         }
@@ -104,7 +150,7 @@
         "cfBrowserLauncher.defaultBrowser": {
           "type": "string",
           "default": "",
-          "description": "Key (within 'browsers') used by 'Run CFM File in Default Browser'. Leave empty to use the operating system's default browser. Set it to one of your 'browsers' keys (e.g. 'brave') to always use that specific browser instead."
+          "description": "Key (within 'browsers') used by 'Run ColdFusion File in Default Browser' and 'Debug ColdFusion File in Default Browser'. Leave empty to use the operating system's default browser. Set it to one of your 'browsers' keys (e.g. 'brave') to always use that specific browser instead."
         },
         "cfBrowserLauncher.browsers": {
           "type": "object",
