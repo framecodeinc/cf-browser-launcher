@@ -10,8 +10,14 @@
  * to open the debug URL, the browser chosen by the user is used instead. Adobe's files are not
  * modified. Then it loads Adobe's adapter, which starts exactly as if VS Code had launched it directly.
  *
+ * It also fixes a problem of Adobe's adapter on Linux: it opens the page with `xdg-open` and waits for
+ * that process to end before it starts listening for breakpoints, so breakpoints are only hit once
+ * the browser is closed. With `CFBL_NO_WAIT` the system default browser is still used, but without
+ * waiting for it.
+ *
  * Inputs: the adapter path in `process.argv[2]`, and the environment variables `CFBL_BROWSER_PATH`
- * (browser executable) and `CFBL_STATUS_FILE` (file where the outcome is reported to the extension).
+ * (browser executable), `CFBL_NO_WAIT` (`1` to use the system default browser without waiting for it)
+ * and `CFBL_STATUS_FILE` (file where the outcome is reported to the extension).
  *
  * @packageDocumentation
  */
@@ -28,8 +34,11 @@ const childProcess: typeof import('child_process') = require('child_process');
 /** Path of Adobe's `adapter.js`, passed by the extension as the first argument. */
 const adapterPath = process.argv[2];
 
-/** Executable of the browser the user chose. Empty means "do not redirect". */
+/** Executable of the browser the user chose. Empty means "use the system default browser". */
 const browserPath = process.env.CFBL_BROWSER_PATH ?? '';
+
+/** When `1` (and no browser was chosen), open the system default browser without waiting for it. */
+const noWait = process.env.CFBL_NO_WAIT === '1';
 
 /** File the extension watches to learn how the browser launch went. Empty means "do not report". */
 const statusFile = process.env.CFBL_STATUS_FILE ?? '';
@@ -89,12 +98,13 @@ function findUrl(args: readonly string[]): string | undefined {
 }
 
 /**
- * Replaces `child_process.spawn` with a version that redirects calls opening a URL.
+ * Replaces `child_process.spawn` with a version that changes calls opening a URL.
  *
- * Any call without a URL is passed through unchanged. For a call with a URL, the chosen browser is
- * started instead and the outcome is reported. Adobe's adapter waits for the 'close' event of the
- * process it spawned, so a stand-in that finishes right away is returned (browsers can stay open for
- * hours, while PowerShell's `Start` returns immediately).
+ * Any call without a URL is passed through unchanged. For a call with a URL, either the chosen
+ * browser is started instead, or (system default browser, `CFBL_NO_WAIT`) the same command is run
+ * detached. In both cases the outcome is reported. Adobe's adapter waits for the 'close' event of
+ * the process it spawned, so a stand-in that finishes right away is returned (browsers can stay open
+ * for hours, while PowerShell's `Start` returns immediately).
  */
 function install(): void {
   const originalSpawn = childProcess.spawn as unknown as (...params: unknown[]) => unknown;
@@ -106,14 +116,26 @@ function install(): void {
       return originalSpawn.apply(childProcess, params);
     }
 
-    const browser = originalSpawn(browserPath, [url], {
+    // A chosen browser is started with the URL; otherwise the system's own command is run detached.
+    const command = browserPath || String(params[0]);
+    const commandArgs = browserPath ? [url] : args;
+    const options = browserPath ? {} : { ...(params[2] as object | undefined) };
+    const browser = originalSpawn(command, commandArgs, {
+      ...options,
       detached: true,
       stdio: 'ignore'
     }) as import('child_process').ChildProcess;
 
-    browser.once('spawn', () => report('ok', `Opened ${url} with ${browserPath}`));
+    browser.once('spawn', () =>
+      report(
+        'ok',
+        browserPath
+          ? `Opened ${url} with ${browserPath}`
+          : `Opened ${url} with the system default browser, without waiting for it to close`
+      )
+    );
     browser.once('error', (err: Error) =>
-      report('error', `Could not start the browser (${browserPath}): ${err.message}`)
+      report('error', `Could not start the browser (${command}): ${err.message}`)
     );
     browser.unref();
 
@@ -134,7 +156,7 @@ if (!adapterPath || !fs.existsSync(adapterPath)) {
   process.exit(1);
 }
 
-if (browserPath) {
+if (browserPath || noWait) {
   try {
     install();
   } catch (err) {

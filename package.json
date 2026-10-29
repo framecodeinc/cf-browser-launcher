@@ -154,17 +154,12 @@
         },
         "cfBrowserLauncher.browsers": {
           "type": "object",
-          "default": {
-            "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-            "edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-            "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
-            "chromium": "C:\\Program Files\\Chromium\\Application\\chrome.exe"
-          },
+          "default": {},
           "additionalProperties": {
             "type": "string",
             "description": "Absolute path to this browser's executable."
           },
-          "description": "Map of name -> absolute path of each installed browser's executable. Adjust the paths to match your machine."
+          "description": "Extra browsers, or paths that replace a built-in one: map of name -> absolute path of the browser's executable. Chrome, Edge, Firefox and Chromium are already included for your operating system (see the README for their paths)."
         }
       }
     },
@@ -204,6 +199,10 @@
               "cfblStatusFile": {
                 "type": "string",
                 "description": "Internal: file used to report the browser launch result."
+              },
+              "cfblSystemDefault": {
+                "type": "boolean",
+                "description": "Use the system default browser, without waiting for it to close (Linux)."
               }
             }
           }

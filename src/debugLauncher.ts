@@ -203,7 +203,8 @@ function getAdobeAdapterPath(): string | undefined {
 
 /**
  * Tells VS Code how to start the debug adapter of {@link BROWSER_DEBUG_TYPE}: Adobe's own adapter,
- * launched through the wrapper that redirects the browser.
+ * launched through the wrapper that redirects the browser (or, with `cfblSystemDefault`, that only
+ * stops the adapter from waiting for the system default browser to close).
  */
 class BrowserDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
   /** @param wrapperPath - Absolute path of this extension's `adapterWrapper.js`. */
@@ -211,7 +212,8 @@ class BrowserDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory
 
   /**
    * @param session - The session being started; its configuration has `cfblBrowserPath` (browser to
-   *   use) and `cfblStatusFile` (where the wrapper reports the outcome).
+   *   use) or `cfblSystemDefault` (use the system default browser), and `cfblStatusFile` (where the
+   *   wrapper reports the outcome).
    * @returns The command that starts the wrapper (VS Code's own binary, running as plain Node).
    * @throws If Adobe's adapter or the chosen browser can't be found.
    */
@@ -223,8 +225,9 @@ class BrowserDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory
       );
     }
 
-    const browserPath = String(session.configuration.cfblBrowserPath ?? '');
-    if (!browserPath || !fs.existsSync(browserPath)) {
+    const systemDefault = session.configuration.cfblSystemDefault === true;
+    const browserPath = systemDefault ? '' : String(session.configuration.cfblBrowserPath ?? '');
+    if (!systemDefault && (!browserPath || !fs.existsSync(browserPath))) {
       throw new Error(`Browser executable not found: '${browserPath}'.`);
     }
 
@@ -233,6 +236,7 @@ class BrowserDebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory
       env: {
         ELECTRON_RUN_AS_NODE: '1',
         CFBL_BROWSER_PATH: browserPath,
+        CFBL_NO_WAIT: systemDefault ? '1' : '',
         CFBL_STATUS_FILE: String(session.configuration.cfblStatusFile ?? '')
       }
     });
@@ -281,9 +285,10 @@ function readStatus(statusFile: string): StatusEntry | undefined {
  *
  * @param statusFile - Status file the wrapper writes to (removed when done).
  * @param fileName - Name of the file being debugged, for the messages.
- * @param browser - The browser the user picked.
+ * @param browser - The browser the user picked; omit for the system default browser.
  */
-function watchBrowserLaunch(statusFile: string, fileName: string, browser: BrowserChoice): void {
+function watchBrowserLaunch(statusFile: string, fileName: string, browser?: BrowserChoice): void {
+  const label = browser ? capitalize(browser.key) : 'the system default browser';
   const startedAt = Date.now();
   let sessionEnded = false;
   let finished = false;
@@ -319,9 +324,7 @@ function watchBrowserLaunch(statusFile: string, fileName: string, browser: Brows
       finish();
       if (status.status === 'ok') {
         log(status.message);
-        void vscode.window.showInformationMessage(
-          `Debugging '${fileName}' in ${capitalize(browser.key)}...`
-        );
+        void vscode.window.showInformationMessage(`Debugging '${fileName}' in ${label}...`);
       } else {
         showError(`Debug: ${status.message}`);
       }
@@ -337,7 +340,7 @@ function watchBrowserLaunch(statusFile: string, fileName: string, browser: Brows
     if (Date.now() - startedAt > NOT_INTERCEPTED_TIMEOUT_MS) {
       finish();
       showError(
-        `Debug: the browser launch could not be redirected to ${capitalize(browser.key)}. ` +
+        `Debug: the browser launch could not be ${browser ? `redirected to ${label}` : 'adjusted'}. ` +
           "Adobe's debugger may have changed; the system default browser may have opened instead. " +
           `(Adobe ColdFusion Builder extension ${getAdobeVersion()}; tested with ${TESTED_ADOBE_VERSION}.)`
       );
@@ -357,6 +360,10 @@ function watchBrowserLaunch(statusFile: string, fileName: string, browser: Brows
 async function startDebug(target: vscode.Uri, browser?: BrowserChoice): Promise<void> {
   const fileName = path.basename(target.fsPath);
 
+  // Adobe's adapter on Linux waits for the browser to close before it listens for breakpoints, so
+  // there the system default browser also goes through the wrapper (which stops that wait).
+  const useWrapper = !!browser || process.platform === 'linux';
+
   const adobe = vscode.extensions.getExtension(ADOBE_EXTENSION_ID);
   if (!adobe) {
     showError(
@@ -372,7 +379,7 @@ async function startDebug(target: vscode.Uri, browser?: BrowserChoice): Promise<
     return;
   }
 
-  if (browser && !getAdobeAdapterPath()) {
+  if (useWrapper && !getAdobeAdapterPath()) {
     showError(
       "Adobe's debug adapter was not found inside the ColdFusion Builder extension. " +
         'This feature needs a compatible version of that extension.'
@@ -411,12 +418,12 @@ async function startDebug(target: vscode.Uri, browser?: BrowserChoice): Promise<
     await vscode.window.showTextDocument(target, { preview: true });
   }
 
-  const statusFile = browser
+  const statusFile = useWrapper
     ? path.join(os.tmpdir(), `cfbl-debug-${process.pid}-${Date.now()}.status`)
     : '';
 
   const config: vscode.DebugConfiguration = {
-    type: browser ? BROWSER_DEBUG_TYPE : ADOBE_DEBUG_TYPE,
+    type: useWrapper ? BROWSER_DEBUG_TYPE : ADOBE_DEBUG_TYPE,
     request: 'launch',
     name: browser ? `CFML Debug (${capitalize(browser.key)})` : 'CFML Debug',
     program: target.fsPath,
@@ -425,14 +432,18 @@ async function startDebug(target: vscode.Uri, browser?: BrowserChoice): Promise<
     stopOnEntry: false
   };
 
-  if (browser) {
-    config.cfblBrowserPath = browser.path;
+  if (useWrapper) {
+    if (browser) {
+      config.cfblBrowserPath = browser.path;
+    } else {
+      config.cfblSystemDefault = true;
+    }
     config.cfblStatusFile = statusFile;
     watchBrowserLaunch(statusFile, fileName, browser);
   }
 
   const folder = vscode.workspace.getWorkspaceFolder(target);
-  if (browser) {
+  if (useWrapper) {
     log(
       `Adobe ColdFusion Builder extension ${getAdobeVersion()} (tested with ${TESTED_ADOBE_VERSION}).`
     );

@@ -4,7 +4,7 @@ All notable changes to the "ColdFusion Browser Launcher" extension will be docum
 
 ---
  
-## [1.1.7] - 2026-10-25
+## [1.1.7] - 2026-10-29
  
 ### Added
  
@@ -22,9 +22,14 @@ All notable changes to the "ColdFusion Browser Launcher" extension will be docum
  
 - The run commands are now named **Run ColdFusion File in Default Browser** and
   **Run ColdFusion File in...**, matching the debug ones.
+- The browsers built in for your operating system are provided by the extension, so the Settings
+  screen no longer lists Windows paths on every system. Add entries to `browsers` only for other
+  browsers or to change a path (see the README).
 ### Fixed
  
 - File or folder names with spaces, `#`, `%`, `?`, `&` or accents now produce a valid URL.
+- On Linux, the debug options no longer wait for the browser to be closed before stopping at
+  breakpoints, which is what Adobe's own debugger does there.
 - "Run ColdFusion File in Default Browser" opens the page through VS Code instead of
   `cmd /c start`, which failed with some characters on Windows, and now works the same on every platform.
 

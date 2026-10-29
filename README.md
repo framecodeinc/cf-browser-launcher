@@ -84,6 +84,11 @@ If the redirect can't be done (for example, after an Adobe update changes how th
 works), you get an error message instead of a silent failure, and the system default browser
 may open instead.
 
+On Linux there is one more problem in Adobe's debugger: it opens the page and waits for the
+browser to be closed before it starts listening for breakpoints, so a breakpoint is only hit after
+you close the browser. Both debug options avoid this: with a chosen browser it is started without
+waiting, and with the system default browser the page is opened the same way but without the wait.
+
 #### How the project is found
 
 Like Adobe, the extension looks for `.vscode/*.cfproject` files in your workspace folders
@@ -130,17 +135,14 @@ Go to `Settings` (Ctrl+,) and search for `ColdFusion Browser Launcher`, or edit 
 <img src="images/readme1.png" width="90%" />
 
 ```jsonc
-// Windows example; macOS and Linux have their own built-in paths
 {
   "cfBrowserLauncher.serverHost": "http://localhost:8500",
   "cfBrowserLauncher.documentRoot": "", // empty = auto-detect from the workspace folder
   "cfBrowserLauncher.projectName": "", // empty = auto-detect from the folder name
   "cfBrowserLauncher.defaultBrowser": "", // empty = use the OS default browser
+  // Only needed to add a browser or to change a built-in path (see "Built-in browsers")
   "cfBrowserLauncher.browsers": {
-    "chrome": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "edge": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-    "firefox": "C:\\Program Files\\Mozilla Firefox\\firefox.exe",
-    "chromium": "C:\\Program Files\\Chromium\\Application\\chrome.exe"
+    "brave": "/usr/bin/brave-browser"
   }
 }
 ```
@@ -151,7 +153,21 @@ Go to `Settings` (Ctrl+,) and search for `ColdFusion Browser Launcher`, or edit 
 | `documentRoot` | *(empty)* | Absolute path to a specific CF project's root. Leave empty to auto-detect it from the workspace folder that contains the file you clicked. |
 | `projectName` | *(empty)* | The URL segment right after `serverHost`. Leave empty to auto-detect it from the resolved document root's folder name. |
 | `defaultBrowser` | *(empty)* | Which entry in `browsers` to use for "Run ColdFusion File in Default Browser" and "Debug ColdFusion File in Default Browser". Leave empty to use your OS default browser instead of a specific one. |
-| `browsers` | Chrome, Edge, Firefox, Chromium | Map of browser name → absolute path to its executable. The built-in entries are the usual install locations on Windows, macOS and Linux. Add, edit, or remove entries from the Settings UI (a table with an "Add Item" button), or edit `settings.json` directly. |
+| `browsers` | *(empty; Chrome, Edge, Firefox and Chromium are built in)* | Extra browsers, or paths that replace a built-in one: map of browser name → absolute path to its executable. Add entries from the Settings UI (a table with an "Add Item" button), or edit `settings.json` directly. Changes apply right away. |
+
+### Built-in browsers
+
+The extension knows where these browsers are usually installed on each operating system, so you
+don't need to configure them. The Settings screen only lists what you add. To use another browser,
+or one installed elsewhere, add an entry to `browsers`; an entry with the same name as a built-in
+one replaces its path.
+
+| Name | Windows | macOS | Linux |
+|---|---|---|---|
+| `chrome` | `C:\Program Files\Google\Chrome\Application\chrome.exe` | `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` | `/usr/bin/google-chrome` |
+| `edge` | `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` | `/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge` | `/usr/bin/microsoft-edge` |
+| `firefox` | `C:\Program Files\Mozilla Firefox\firefox.exe` | `/Applications/Firefox.app/Contents/MacOS/firefox` | `/usr/bin/firefox` |
+| `chromium` | `C:\Program Files\Chromium\Application\chrome.exe` | `/Applications/Chromium.app/Contents/MacOS/Chromium` | `/usr/bin/chromium` |
 
 ### About auto-detection (`documentRoot` and `projectName`)
 
@@ -177,8 +193,8 @@ Override when needed:
 ## Requirements
 
 - A locally running Adobe ColdFusion server.
-- The browser(s) you want to use already installed, with their executable paths
-  configured in `browsers`.
+- The browser(s) you want to use already installed. Chrome, Edge, Firefox and Chromium are built in
+  (see Built-in browsers); any other needs an entry in `browsers`.
 
 To **debug** you also need:
 
@@ -196,6 +212,9 @@ Error messages also have a **Show Log** button.
 - **"Another session has already set a breakpoint there"** — the ColdFusion server still has
   that breakpoint from another debug session. Stop every debug session and try again; if it
   persists, restarting the ColdFusion service may clear stale sessions.
+- **The breakpoint is only hit after closing the browser (Linux)** — that is Adobe's debugger waiting
+  for the browser to close. It doesn't happen with the debug options of this extension; if it does,
+  open **Show Log** and check that it says the page was opened without waiting.
 - **"the browser launch could not be redirected"** — the Adobe debugger is probably different
   from the version this extension was tested with. The log shows the installed version. The
   run options keep working; please open an issue.
@@ -216,12 +235,12 @@ Error messages also have a **Show Log** button.
   domain or port, with no project name in the URL), set `serverHost` to that
   project's full domain/port and `projectName` to whatever segment (if any) its URLs
   actually use — there's currently no way to omit the project segment entirely.
-- The built-in browser paths for macOS and Linux are the usual install locations and have not been
-  tested; adjust them in `browsers` if yours are elsewhere. `serverHost` must start with `http://`
-  or `https://`.
+- The built-in browser paths for Linux were checked on Linux Mint 22.3; the ones for macOS are the usual
+  install locations and have not been tested. Adjust them in `browsers` if yours are elsewhere.
+  `serverHost` must start with `http://` or `https://`.
 - Debugging in a browser of your choice relies on how Adobe's debugger opens the browser
   internally, so an Adobe update can break it (you'd get an error, see Troubleshooting).
-  It has only been tested on Windows, with Adobe ColdFusion Builder extension 1.0.880.
+  It has been tested on Windows 11 and Linux Mint 22.3, and not on macOS.
 - The ColdFusion server rejects a breakpoint that another debug session already set on the same line.
 
 ## Author
